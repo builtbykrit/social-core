@@ -1,5 +1,6 @@
 from six.moves.urllib_parse import quote
 
+from social_core.exceptions import AuthFailed
 from .utils import sanitize_redirect, user_is_authenticated, \
                    user_is_active, partial_pipeline_data, setting_url
 
@@ -40,7 +41,11 @@ def do_complete(backend, login, user=None, redirect_name='next',
         # clean partial data after usage
         backend.strategy.clean_partial_pipeline(partial.token)
     else:
-        user = backend.complete(user=user, *args, **kwargs)
+        try:
+            user = backend.complete(user=user, *args, **kwargs)
+        except AuthFailed:
+            url = setting_url(backend, 'LOGIN_ERROR_URL', 'LOGIN_URL')
+            return backend.strategy.redirect(url)
 
     # pop redirect value before the session is trashed on login(), but after
     # the pipeline so that the pipeline can change the redirect if needed
